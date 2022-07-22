@@ -98,7 +98,7 @@ app.layout = html.Div(
             className="banner",
             children=[html.A([
             html.Img(src=app.get_asset_url("/GitHub-Mark/PNG/GitHub-Mark-64px.png"))
-    ], href='https://www.google.com')]
+    ], href='https://github.com/j-mrph/vanguard-compare')]
         ),
 
     html.Div(
