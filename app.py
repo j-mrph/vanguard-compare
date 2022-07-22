@@ -21,6 +21,7 @@ named_funds = df[['name', 'portId']]
 
 
 app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+server = app.server
 
 app.title = "Vanguard U.K. Fund Comparison"
 
