@@ -20,7 +20,7 @@ df = df[df['shareClass'] == 'Accumulation']
 named_funds = df[['name', 'portId']]
 
 
-app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
 
 app.title = "Vanguard U.K. Fund Comparison"
