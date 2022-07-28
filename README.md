@@ -1,5 +1,7 @@
 # Vanguard U.K. Fund Comparison
-Web app to compare Vanguard UK accumulation funds monthly returns. Fetches direct from Vanguard UK website. Built using python dash.
+Web app to compare Vanguard UK accumulation funds monthly returns. Fetches direct from Vanguard UK website. Built using python Dash.
+
+Check it out deployed [here](https://vanguard-dash-app.herokuapp.com/).
 
 Set an initial lump sum and investment date to see today's value based on monthly changes of fund value. 
 
