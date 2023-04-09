@@ -91,7 +91,7 @@ def generate_control_card():
             dcc.Checklist(
                 id="arima",
                 options=[
-                    " Include +3 Year forecast (Fitted to the timeframe that has been selected, calculated only with at least 3 years of data available)"
+                    " Experimental - Include +3 Year forecast (Fitted to the timeframe that has been selected, calculated only with at least 3 years of data available)"
                 ],
             ),
             html.Br(),

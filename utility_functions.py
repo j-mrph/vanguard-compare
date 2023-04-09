@@ -44,22 +44,16 @@ def add_prophet_forecast(
     model.fit(df)
 
     # make a forecast for the next 3 years
-    future = model.make_future_dataframe(periods=1095)
+    future = model.make_future_dataframe(periods=1095, include_history=False)
     forecast = model.predict(future)
 
-    forecast = forecast["yhat"].tail(1095).tolist()
+    forecast_dates = forecast["ds"].tolist()
 
     # create a new dataframe for the forecast
-    last_date = returns_df["asOfDate"].max()
-    dates = pd.date_range(
-        start=last_date + pd.Timedelta(days=1),
-        end=last_date + pd.Timedelta(days=1095),
-        freq="D",
-    )
     forecast_df = pd.DataFrame(
         {
-            "asOfDate": dates,
-            "price": forecast,
+            "asOfDate": forecast_dates,
+            "price": forecast["yhat"].tolist(),
             "fund_name": f"+3 year prediction: {name}",
         }
     )
