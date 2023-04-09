@@ -7,8 +7,9 @@ import requests
 from datetime import datetime
 from dateutil import parser
 
+
 # from testing import get_price_history, add_arima_forecast
-from utility_functions import *
+import utility_functions
 
 # list all vanguard funds
 resp = requests.get("https://www.vanguardinvestor.co.uk/api/productList/")
@@ -47,7 +48,7 @@ def description_card():
         Analyze and compare the historic returns of all funds listed by
         [vanguardinvestor.co.uk](https://www.vanguardinvestor.co.uk).
 
-        *Note: Accumulation funds only, calculated using monthly percentage change values.*
+        *Note: Accumulation funds only, calculated using daily variations in purchase price for the fund.*
         """
                 ),
             ),
@@ -90,7 +91,7 @@ def generate_control_card():
             dcc.Checklist(
                 id="arima",
                 options=[
-                    " Include +3 Year ARIMA forecast (Fitted to the timeframe that has been selected, calculated only with at least 3 years of data available)"
+                    " Include +3 Year forecast (Fitted to the timeframe that has been selected, calculated only with at least 3 years of data available)"
                 ],
             ),
             html.Br(),
@@ -162,7 +163,7 @@ app.layout = html.Div(
                 ),
                 html.Div(
                     dcc.Markdown(
-                        """This app is for educational purposes only, past performance is not a reliable indicator of future returns. 
+                        """This app is for educational purposes only, past performance is not a reliable indicator of future returns. Purchase prices and sale prices will differ.
                 For comprehensive fund details including ongoing charges visit the vanguard uk fund page. 
                 """
                     )
@@ -192,7 +193,7 @@ def update_line_chart(
 ):
     if not all([dropdown_value, date_value, initial_lump_value]):
         # handling lack of inputs
-        placeholder_fig = create_placeholder_chart()
+        placeholder_fig = utility_functions.create_placeholder_chart()
 
         dt = pd.DataFrame().to_dict(orient="records")
         return placeholder_fig, dt, []
@@ -204,19 +205,18 @@ def update_line_chart(
         names = fundcodes.name.tolist()
         codes = fundcodes.portId.tolist()
 
-        # here we are applying the get return function to the funds
+        # here we are applying the get price history function to the funds
         # including the investment date and initial lump sum
         result = list(
             map(
-                get_price_history,
+                utility_functions.get_price_history,
+                [initial_lump_value] * len(names),
                 names,
                 codes,
                 [date_value] * len(names),
                 [arima_value] * len(names),
             )
         )
-        #   [initial_lump_value] * len(names),
-        #   [arima_value] * len(names)))
 
         # combine all fund results for visualisation
         full_df = pd.concat(result)
@@ -227,48 +227,16 @@ def update_line_chart(
             y="price",
             color="fund_name",
             template="simple_white",
-            labels=dict(asOfDate="Date", price="Value (£)", fund_name="Fund"),
+            labels={
+                "asOfDate": "Date",
+                "price": "Value (£)",
+                "fund_name": "Fund",
+            },
         )
 
         fig.update_layout(legend=dict(orientation="h", y=-0.3, title_text=""))
 
-        # data preparation for the results table
-        # df_filtered = full_df.groupby("fund_name").tail(1).copy()
-
-        # df_filtered = df_filtered[["fund_name", "calculated"]]
-
-        # plus_3 = df_filtered.loc[df_filtered.fund_name.str.startswith("+3", na=False)]
-
-        # if plus_3.empty:
-        #     # if no forecast has been carried out
-
-        #     df_filtered.columns = ["Fund", "This Month Value"]
-
-        #     df_filtered["This Month Value"] = df_filtered["This Month Value"].apply(
-        #         lambda x: "£{:0,.2f}".format(float(x))
-        #     )
-
-        #     dt = df_filtered.to_dict(orient="records")
-
-        # else:
-        #     # if there was a forecast make table wide and add predicted value as col
-        #     plus_3["fund_name"] = plus_3["fund_name"].str.replace(r"^.{19}", "")
-        #     with_forecast = plus_3.merge(df_filtered, on="fund_name", how="left")
-        #     with_forecast = with_forecast[["fund_name", "calculated_y", "calculated_x"]]
-        #     with_forecast.columns = ["Fund", "This Month Value", "Predicted +3y Value"]
-
-        #     # number formatting
-
-        #     with_forecast["This Month Value"] = with_forecast["This Month Value"].apply(
-        #         lambda x: "£{:0,.2f}".format(float(x))
-        #     )
-        #     with_forecast["Predicted +3y Value"] = with_forecast[
-        #         "Predicted +3y Value"
-        #     ].apply(lambda x: "£{:0,.2f}".format(float(x)))
-
-        #     dt = with_forecast.to_dict(orient="records")
-
-        dt = {}
+        dt = utility_functions.prepare_results_table(full_df)
 
         # table message
         message = dcc.Markdown(

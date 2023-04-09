@@ -4,6 +4,7 @@ import json
 from pmdarima.arima import auto_arima
 import plotly.graph_objects as go
 from datetime import datetime
+from fbprophet import Prophet
 
 
 def create_placeholder_chart():
@@ -21,6 +22,52 @@ def create_placeholder_chart():
     fig_none.update_layout(template="simple_white")
 
     return fig_none
+
+
+def add_prophet_forecast(
+    returns_df: pd.DataFrame, name: str, prophet: bool
+) -> pd.DataFrame:
+    days_ago = (datetime.now() - returns_df["asOfDate"].min()).days
+
+    if not prophet or days_ago <= 1096:
+        return returns_df
+
+    # create a new dataframe with column names 'ds' and 'y'
+    df = returns_df[["asOfDate", "price"]].rename(
+        columns={"asOfDate": "ds", "price": "y"}
+    )
+
+    # create and fit a Prophet model
+    model = Prophet(
+        yearly_seasonality=False, weekly_seasonality=False, daily_seasonality=False
+    )
+    model.fit(df)
+
+    # make a forecast for the next 3 years
+    future = model.make_future_dataframe(periods=1095)
+    forecast = model.predict(future)
+
+    forecast = forecast["yhat"].tail(1095).tolist()
+
+    # create a new dataframe for the forecast
+    last_date = returns_df["asOfDate"].max()
+    dates = pd.date_range(
+        start=last_date + pd.Timedelta(days=1),
+        end=last_date + pd.Timedelta(days=1095),
+        freq="D",
+    )
+    forecast_df = pd.DataFrame(
+        {
+            "asOfDate": dates,
+            "price": forecast,
+            "fund_name": f"+3 year prediction: {name}",
+        }
+    )
+
+    return pd.concat(
+        [returns_df[["asOfDate", "price", "fund_name"]], forecast_df],
+        ignore_index=True,
+    )
 
 
 def add_arima_forecast(
@@ -46,17 +93,48 @@ def add_arima_forecast(
         {
             "asOfDate": dates,
             "price": forecast,
-            "fund_name": f"+1 year prediction: {name}",
+            "fund_name": f"+3 year prediction: {name}",
         }
     )
 
     return pd.concat(
-        [returns_df[["asOfDate", "price", "fund_name"]], forecast_df], ignore_index=True
+        [returns_df[["asOfDate", "price", "fund_name"]], forecast_df],
+        ignore_index=True,
     )
 
 
+def calculate_investment_value(
+    df: pd.DataFrame, initial_investment: float
+) -> pd.DataFrame:
+    # Check if input dataframe has required columns
+    if "price" not in df.columns:
+        raise ValueError("Input dataframe must contain 'price' column")
+
+    # Check if input dataframe has at least two rows
+    if len(df) < 2:
+        raise ValueError("Input dataframe must have at least two rows")
+
+    # Check if initial investment is a positive number
+    if initial_investment <= 0:
+        raise ValueError("Initial investment must be a positive number")
+
+    # Calculate daily change percentage
+    df["Daily Change %"] = df["price"].pct_change()
+
+    # Calculate cumulative daily change percentage
+    df["Cumulative Change %"] = (1 + df["Daily Change %"]).cumprod() - 1
+
+    # Calculate value of investment
+    df["price"] = (1 + df["Cumulative Change %"]) * initial_investment
+
+    # drop first row as no change on investment date
+    df = df.drop(index=0)
+
+    return df
+
+
 def get_price_history(
-    name: str, fund_code: str, start_date: str, arima: bool
+    initial_investment: float, name: str, fund_code: str, start_date: str, arima: bool
 ) -> pd.DataFrame:
     # query url
     url = "https://www.vanguardinvestor.co.uk/gpx/graphql"
@@ -132,7 +210,58 @@ def get_price_history(
     # arrange by date
     df = df.sort_values(by=["asOfDate"], ascending=True, ignore_index=True)
 
+    # calculate investment value
+    df = calculate_investment_value(df, initial_investment)
+
     # apply arima forecast (if applicable)
-    df = add_arima_forecast(df, name, arima)
+    df = add_prophet_forecast(df, name, arima)
 
     return df
+
+
+def build_table_with_forecasts(plus_3, df_filtered):
+    # if there was a forecast, merge the two dataframes and rename columns
+    plus_3["fund_name"] = plus_3["fund_name"].str.replace(r"^.{19}", "")
+    plus_3["fund_name"] = plus_3["fund_name"].str.strip()
+
+    with_forecast = plus_3.merge(df_filtered, on="fund_name", how="left")
+    with_forecast = with_forecast[["fund_name", "price_y", "price_x"]]
+    with_forecast.columns = ["Fund", "Today Value", "Predicted +3y Value"]
+
+    # format the price columns
+    with_forecast["Today Value"] = with_forecast["Today Value"].apply(
+        lambda x: "£{:0,.2f}".format(float(x))
+    )
+    with_forecast["Predicted +3y Value"] = with_forecast["Predicted +3y Value"].apply(
+        lambda x: "£{:0,.2f}".format(float(x))
+    )
+
+    # convert the dataframe to a list of dictionaries
+    return with_forecast.to_dict(orient="records")
+
+
+def prepare_results_table(full_df):
+    # select only the last row for each fund
+    df_filtered = full_df.groupby("fund_name").tail(1).copy()
+
+    print(df_filtered)
+
+    # select only the necessary columns
+    df_filtered = df_filtered[["fund_name", "price"]]
+
+    # filter funds starting with "+3"
+    plus_3 = df_filtered.loc[df_filtered.fund_name.str.startswith("+3", na=False)]
+
+    if not plus_3.empty:
+        return build_table_with_forecasts(plus_3, df_filtered)
+
+    # if no forecast has been carried out
+    df_filtered.columns = ["Fund", "Today Value"]
+
+    # format the price column
+    df_filtered["Today Value"] = df_filtered["Today Value"].apply(
+        lambda x: "£{:0,.2f}".format(float(x))
+    )
+
+    # convert the dataframe to a list of dictionaries
+    return df_filtered.to_dict(orient="records")
