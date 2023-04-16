@@ -1,24 +1,17 @@
-from dash import Dash, dcc, html, Input, Output, dash_table
-from dash.dependencies import State
-import dash_bootstrap_components as dbc
-import plotly.express as px
-import pandas as pd
-import requests
 from datetime import datetime
+
+import dash_bootstrap_components as dbc
+import pandas as pd
+import plotly.express as px
+import requests
+from dash import Dash, Input, Output, dash_table, dcc, html
+from dash.dependencies import State
 from dateutil import parser
 
-
-# from testing import get_price_history, add_arima_forecast
 import utility_functions
 
 # list all vanguard funds
-resp = requests.get("https://www.vanguardinvestor.co.uk/api/productList/")
-
-df = pd.read_json(resp.text)
-
-df = df[df["shareClass"] == "Accumulation"]
-
-named_funds = df[["name", "portId"]]
+named_funds = utility_functions.list_funds()
 
 
 app = Dash(
@@ -81,7 +74,7 @@ def generate_control_card():
             html.P("Select Funds"),
             dcc.Dropdown(
                 id="fundlist",
-                options=[{"label": i, "value": i} for i in df.name.unique()],
+                options=[{"label": i, "value": i} for i in named_funds.name.unique()],
                 multi=True,
                 value=[
                     " FTSE Global All Cap Index Fund",
@@ -91,7 +84,7 @@ def generate_control_card():
             dcc.Checklist(
                 id="arima",
                 options=[
-                    " Experimental - Include +3 Year forecast (Fitted to the timeframe that has been selected, calculated only with at least 3 years of data available)"
+                    " Experimental: Include +3 Year forecast (Fitted to the timeframe that has been selected, calculated only with at least 3 years of data available)"
                 ],
             ),
             html.Br(),

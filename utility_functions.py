@@ -7,6 +7,17 @@ from datetime import datetime
 from fbprophet import Prophet
 
 
+def list_funds():
+    # list all vanguard funds
+    resp = requests.get("https://www.vanguardinvestor.co.uk/api/productList/")
+
+    df = pd.read_json(resp.text)
+
+    df = df[df["shareClass"] == "Accumulation"]
+
+    return df[["name", "portId"]]
+
+
 def create_placeholder_chart():
     fig_none = go.Figure()
     fig_none.add_trace(
@@ -237,8 +248,6 @@ def build_table_with_forecasts(plus_3, df_filtered):
 def prepare_results_table(full_df):
     # select only the last row for each fund
     df_filtered = full_df.groupby("fund_name").tail(1).copy()
-
-    print(df_filtered)
 
     # select only the necessary columns
     df_filtered = df_filtered[["fund_name", "price"]]
