@@ -3,10 +3,8 @@ from datetime import datetime
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px
-import requests
 from dash import Dash, Input, Output, dash_table, dcc, html
 from dash.dependencies import State
-from dateutil import parser
 
 import utility_functions
 

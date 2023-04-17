@@ -1,7 +1,8 @@
 import requests
 import pandas as pd
 import json
-from pmdarima.arima import auto_arima
+
+# from pmdarima.arima import auto_arima
 import plotly.graph_objects as go
 from datetime import datetime
 from fbprophet import Prophet
@@ -75,37 +76,37 @@ def add_prophet_forecast(
     )
 
 
-def add_arima_forecast(
-    returns_df: pd.DataFrame, name: str, arima: bool
-) -> pd.DataFrame:
-    days_ago = (datetime.now() - returns_df["asOfDate"].min()).days
+# def add_arima_forecast(
+#     returns_df: pd.DataFrame, name: str, arima: bool
+# ) -> pd.DataFrame:
+#     days_ago = (datetime.now() - returns_df["asOfDate"].min()).days
 
-    if not arima or days_ago <= 1096:
-        return returns_df
+#     if not arima or days_ago <= 1096:
+#         return returns_df
 
-    # make a forecast using auto ARIMA
-    model = auto_arima(returns_df["price"], seasonal=False)
-    forecast = model.predict(n_periods=1095)
+#     # make a forecast using auto ARIMA
+#     model = auto_arima(returns_df["price"], seasonal=False)
+#     forecast = model.predict(n_periods=1095)
 
-    # create a new dataframe for the forecast
-    last_date = returns_df["asOfDate"].max()
-    dates = pd.date_range(
-        start=last_date + pd.Timedelta(days=1),
-        end=last_date + pd.Timedelta(days=1095),
-        freq="D",
-    )
-    forecast_df = pd.DataFrame(
-        {
-            "asOfDate": dates,
-            "price": forecast,
-            "fund_name": f"+3 year prediction: {name}",
-        }
-    )
+#     # create a new dataframe for the forecast
+#     last_date = returns_df["asOfDate"].max()
+#     dates = pd.date_range(
+#         start=last_date + pd.Timedelta(days=1),
+#         end=last_date + pd.Timedelta(days=1095),
+#         freq="D",
+#     )
+#     forecast_df = pd.DataFrame(
+#         {
+#             "asOfDate": dates,
+#             "price": forecast,
+#             "fund_name": f"+3 year prediction: {name}",
+#         }
+#     )
 
-    return pd.concat(
-        [returns_df[["asOfDate", "price", "fund_name"]], forecast_df],
-        ignore_index=True,
-    )
+#     return pd.concat(
+#         [returns_df[["asOfDate", "price", "fund_name"]], forecast_df],
+#         ignore_index=True,
+#     )
 
 
 def calculate_investment_value(
