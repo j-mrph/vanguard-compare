@@ -2,10 +2,9 @@ import requests
 import pandas as pd
 import json
 
-# from pmdarima.arima import auto_arima
 import plotly.graph_objects as go
 from datetime import datetime
-from fbprophet import Prophet
+from Prophet import prophet
 
 
 def list_funds():
@@ -50,9 +49,10 @@ def add_prophet_forecast(
     )
 
     # create and fit a Prophet model
-    model = Prophet(
-        yearly_seasonality=False, weekly_seasonality=False, daily_seasonality=False
-    )
+    model = prophet.Prophet()
+    # prophet.Prophet(
+    #     yearly_seasonality=False, weekly_seasonality=False, daily_seasonality=False
+    # )
     model.fit(df)
 
     # make a forecast for the next 3 years
