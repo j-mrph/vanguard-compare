@@ -4,14 +4,15 @@ import json
 
 import plotly.graph_objects as go
 from datetime import datetime
-from Prophet import prophet
+from prophet import Prophet
+from io import StringIO
 
 
 def list_funds():
     # list all vanguard funds
     resp = requests.get("https://www.vanguardinvestor.co.uk/api/productList/")
 
-    df = pd.read_json(resp.text)
+    df = pd.read_json(StringIO(resp.text))
 
     df = df[df["shareClass"] == "Accumulation"]
 
@@ -49,10 +50,7 @@ def add_prophet_forecast(
     )
 
     # create and fit a Prophet model
-    model = prophet.Prophet()
-    # prophet.Prophet(
-    #     yearly_seasonality=False, weekly_seasonality=False, daily_seasonality=False
-    # )
+    model = Prophet()
     model.fit(df)
 
     # make a forecast for the next 3 years
@@ -75,38 +73,6 @@ def add_prophet_forecast(
         ignore_index=True,
     )
 
-
-# def add_arima_forecast(
-#     returns_df: pd.DataFrame, name: str, arima: bool
-# ) -> pd.DataFrame:
-#     days_ago = (datetime.now() - returns_df["asOfDate"].min()).days
-
-#     if not arima or days_ago <= 1096:
-#         return returns_df
-
-#     # make a forecast using auto ARIMA
-#     model = auto_arima(returns_df["price"], seasonal=False)
-#     forecast = model.predict(n_periods=1095)
-
-#     # create a new dataframe for the forecast
-#     last_date = returns_df["asOfDate"].max()
-#     dates = pd.date_range(
-#         start=last_date + pd.Timedelta(days=1),
-#         end=last_date + pd.Timedelta(days=1095),
-#         freq="D",
-#     )
-#     forecast_df = pd.DataFrame(
-#         {
-#             "asOfDate": dates,
-#             "price": forecast,
-#             "fund_name": f"+3 year prediction: {name}",
-#         }
-#     )
-
-#     return pd.concat(
-#         [returns_df[["asOfDate", "price", "fund_name"]], forecast_df],
-#         ignore_index=True,
-#     )
 
 
 def calculate_investment_value(
@@ -226,24 +192,33 @@ def get_price_history(
 
 
 def build_table_with_forecasts(plus_3, df_filtered):
-    # if there was a forecast, merge the two dataframes and rename columns
-    plus_3["fund_name"] = plus_3["fund_name"].str.replace(r"^.{19}", "")
-    plus_3["fund_name"] = plus_3["fund_name"].str.strip()
 
-    with_forecast = plus_3.merge(df_filtered, on="fund_name", how="left")
-    with_forecast = with_forecast[["fund_name", "price_y", "price_x"]]
-    with_forecast.columns = ["Fund", "Today Value", "Predicted +3y Value"]
+    # Create a new column 'prediction_type' to distinguish current and predicted prices
+    df_filtered['prediction_type'] = df_filtered['fund_name'].apply(lambda x: 'predicted' if '+3 year prediction' in x else 'current')
+
+    # Remove the '+3 year prediction: ' prefix from fund names
+    df_filtered['clean_fund_name'] = df_filtered['fund_name'].replace(r'\+3 year prediction: ', '', regex=True)
+
+    # Pivot the table
+    df_pivoted = df_filtered.pivot(index='clean_fund_name', columns='prediction_type', values='price')
+
+    # Rename the columns
+    df_pivoted.columns = ['price today', 'price +3 years']
+
+    # Reset index and rename the index column
+    df_final = df_pivoted.reset_index().rename(columns={'clean_fund_name': 'fund_name'})
+    df_final.columns = ["Fund", "Today Value", "Predicted +3y Value"]
 
     # format the price columns
-    with_forecast["Today Value"] = with_forecast["Today Value"].apply(
+    df_final["Today Value"] = df_final["Today Value"].apply(
         lambda x: "£{:0,.2f}".format(float(x))
     )
-    with_forecast["Predicted +3y Value"] = with_forecast["Predicted +3y Value"].apply(
+    df_final["Predicted +3y Value"] = df_final["Predicted +3y Value"].apply(
         lambda x: "£{:0,.2f}".format(float(x))
     )
 
     # convert the dataframe to a list of dictionaries
-    return with_forecast.to_dict(orient="records")
+    return df_final.to_dict(orient="records")
 
 
 def prepare_results_table(full_df):
