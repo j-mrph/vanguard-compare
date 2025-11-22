@@ -72,7 +72,7 @@ def generate_control_card():
             html.P("Select Funds"),
             dcc.Dropdown(
                 id="fundlist",
-                options=[{"label": i, "value": i} for i in named_funds.name.unique()],
+                options=[{"label": i, "value": i} for i in sorted(named_funds.name.unique())],
                 multi=True,
                 value=[
                     " FTSE Global All Cap Index Fund",
