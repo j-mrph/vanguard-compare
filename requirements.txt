@@ -12,6 +12,7 @@ dash-html-components==2.0.0
 dash-table==5.0.0
 Flask==3.0.3
 fonttools==4.53.0
+gunicorn==23.0.0
 holidays==0.51
 idna==3.7
 importlib_metadata==7.2.0
