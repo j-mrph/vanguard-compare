@@ -108,6 +108,8 @@ app.layout = html.Div(
                         )
                     ],
                     href="https://github.com/j-mrph/vanguard-compare",
+                    target="_blank",  # This makes the link open in a new tab
+                    rel="noopener noreferrer",  # Security best practice
                 )
             ],
         ),
